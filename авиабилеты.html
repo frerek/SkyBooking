@@ -1,0 +1,821 @@
+!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>SkyBooking — покупка авиабилетов</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Базовые стили (без изменений, только добавлены новые для билета) */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: linear-gradient(145deg, #0b1c2f 0%, #1b3b4f 100%); min-height: 100vh; padding: 20px; display: flex; justify-content: center; align-items: center; }
+        .container { max-width: 1300px; width: 100%; margin: 0 auto; }
+        .booking-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 40px; box-shadow: 0 30px 60px rgba(0, 20, 30, 0.5); padding: 30px; border: 1px solid rgba(255, 255, 255, 0.3); }
+        h1 { font-size: 2.2rem; font-weight: 700; color: #fff; margin-bottom: 10px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 10px; }
+        h1 i { background: #f5b042; padding: 12px; border-radius: 50%; color: #0b1c2f; font-size: 1.5rem; }
+        .subhead { color: #cde3f0; margin-bottom: 30px; font-size: 1.1rem; }
+        .section { background: white; border-radius: 28px; padding: 24px; margin-bottom: 24px; box-shadow: 0 8px 20px rgba(0,20,30,0.15); border: 1px solid #eef5f9; }
+        .section-title { font-size: 1.4rem; font-weight: 600; color: #0f2c3d; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .section-title i { color: #f5b042; font-size: 1.6rem; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+        label { font-weight: 500; color: #2f4b5c; margin-bottom: 5px; display: block; font-size: 0.95rem; }
+        select, input, button { width: 100%; padding: 14px 16px; border: 2px solid #e0ecf5; border-radius: 20px; font-size: 1rem; background: white; transition: 0.2s; outline: none; }
+        select:focus, input:focus { border-color: #f5b042; box-shadow: 0 0 0 4px rgba(245,176,66,0.2); }
+        .flight-option { border: 2px solid #e0ecf5; border-radius: 20px; padding: 16px; cursor: pointer; transition: 0.2s; background: white; }
+        .flight-option.selected { border-color: #f5b042; background: #fff9eb; box-shadow: 0 6px 12px rgba(245,176,66,0.15); }
+        .flight-option h4 { font-weight: 700; color: #0f2c3d; margin-bottom: 8px; }
+        .flight-option .company { color: #3b6e8f; font-weight: 600; margin-bottom: 5px; }
+        .flight-option .time { display: flex; justify-content: space-between; color: #1f4b66; font-weight: 500; }
+        .flight-option .price { margin-top: 10px; font-size: 1.3rem; font-weight: 700; color: #1b7e4a; }
+
+        /* Карта мест */
+        .seat-map { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; width: 100%; overflow-x: auto; }
+        .seat-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 5px; }
+        .seat-row-label { font-weight: 700; color: #144a66; min-width: 40px; font-size: 1rem; }
+        .seat { width: 40px; height: 40px; background: #e4f0f7; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: #144a66; border: 2px solid #b9d6e9; cursor: pointer; transition: 0.1s; font-size: 0.9rem; }
+        .seat.business { background: #fde6b3; border-color: #f5b042; }
+        .seat.available:hover { background: #f5b042; color: white; border-color: #f5b042; }
+        .seat.selected { background: #f5b042; color: white; border-color: #d18f2c; }
+        .seat.occupied { background: #ccc; color: #666; border-color: #aaa; cursor: not-allowed; }
+        @media (max-width: 600px) {
+            .seat { width: 32px; height: 32px; font-size: 0.8rem; }
+            .seat-row-label { min-width: 30px; }
+        }
+
+        .hotel-item, .tour-item { border: 2px solid #e0ecf5; border-radius: 20px; padding: 16px; cursor: pointer; transition: 0.2s; }
+        .hotel-item.selected, .tour-item.selected { border-color: #f5b042; background: #fff9eb; }
+        .hotel-item h4 { font-weight: 700; color: #0f2c3d; }
+        .tour-item h4 { font-weight: 700; color: #0f2c3d; }
+
+        .passenger-card { background: #f6fafd; border-radius: 20px; padding: 15px; margin-bottom: 15px; border: 2px solid #e0ecf5; }
+        .passenger-card.active { border-color: #f5b042; background: #fff9eb; }
+        .passenger-header { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .passenger-header input[type="radio"] { width: auto; margin-right: 10px; }
+
+        .btn-primary { background: #f5b042; border: none; color: #0b1c2f; font-weight: 700; font-size: 1.2rem; padding: 18px; border-radius: 40px; cursor: pointer; transition: 0.2s; box-shadow: 0 8px 20px rgba(245,176,66,0.4); margin-top: 10px; }
+        .btn-primary:hover { background: #ffbf5f; transform: translateY(-2px); }
+
+        /* Стили для реалистичного билета */
+        .ticket {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            margin-top: 20px;
+            font-family: 'Inter', 'Courier New', monospace;
+            overflow: hidden;
+            border: 1px solid #aaa;
+        }
+        .ticket-header {
+            background: #f0f0f0;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px dashed #888;
+        }
+        .ticket-header h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #0b1c2f;
+        }
+        .airline-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        .ticket-body {
+            padding: 20px;
+            background: #fff;
+        }
+        .receipt-section, .boarding-section {
+            border-bottom: 2px dashed #ccc;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        .boarding-section {
+            border-bottom: none;
+        }
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .col {
+            flex: 1 1 200px;
+        }
+        .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #666;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .value {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #000;
+        }
+        .value-sm {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .barcode {
+            margin: 15px 0;
+            text-align: center;
+        }
+        .barcode-svg {
+            height: 50px;
+            background: repeating-linear-gradient(90deg, #000, #000 2px, #fff 2px, #fff 4px);
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .barcode-number {
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #333;
+            margin-top: 5px;
+        }
+        .footer-note {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #777;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            margin-top: 15px;
+        }
+        .hotel-tour-block {
+            background: #f8f8f8;
+            padding: 12px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            border: 1px solid #eee;
+        }
+        .total-price {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #1b7e4a;
+            text-align: right;
+            margin-top: 10px;
+        }
+        @media (max-width: 600px) {
+            .row {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-plane-departure"></i> SkyBooking</h1>
+        <div class="subhead">Реальные и нереальные рейсы · Отели · Туроператоры</div>
+
+        <div id="bookingForm" class="booking-card">
+            <!-- ШАГ 1: Направление -->
+            <div class="section">
+                <div class="section-title"><i class="fas fa-map-marked-alt"></i> Выберите маршрут</div>
+                <div class="grid-2">
+                    <div>
+                        <label>Откуда</label>
+                        <select id="fromCity">
+                            <option value="SVX">Екатеринбург (SVX)</option>
+                            <option value="UFA">Уфа (UFA)</option>
+                            <option value="CEK">Челябинск (CEK)</option>
+                            <option value="SVO">Москва (SVO)</option>
+                            <option value="LED">Санкт-Петербург (LED)</option>
+                            <option value="KZN">Казань (KZN)</option>
+                            <option value="OVB">Новосибирск (OVB)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Куда</label>
+                        <select id="toCity">
+                            <option value="JFK">Нью-Йорк (JFK)</option>
+                            <option value="LHR">Лондон (LHR)</option>
+                            <option value="NRT">Токио (NRT)</option>
+                            <option value="CDG">Париж (CDG)</option>
+                            <option value="FCO">Рим (FCO)</option>
+                            <option value="PEK">Пекин (PEK)</option>
+                            <option value="UTP">Паттайя (Утапао) (UTP)</option>
+                            <option value="HKT">Пхукет (HKT)</option>
+                            <option value="BKK">Бангкок (BKK)</option>
+                            <option value="AYT">Анталья (AYT)</option>
+                            <option value="DXB">Дубай (DXB)</option>
+                            <option value="SSH">Шарм-эль-Шейх (SSH)</option>
+                            <option value="ZZZ">Зона 51 (ZZZ)</option>
+                            <option value="ATL">Атлантида (ATL)</option>
+                            <option value="MOR">Средиземье (MOR)</option>
+                            <option value="HOG">Хогвартс (HOG)</option>
+                            <option value="PAN">Пандора (PAN)</option>
+                            <option value="GOT">Готэм-Сити (GOT)</option>
+                            <option value="EPI">Остров Эпштейна (EPI)</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <label>Дата вылета</label>
+                    <input type="date" id="flightDate">
+                </div>
+            </div>
+
+            <!-- ШАГ 2: Выбор рейса -->
+            <div class="section" id="flightSection">
+                <div class="section-title"><i class="fas fa-ticket-alt"></i> Выберите рейс</div>
+                <div id="flightList" class="grid-2"></div>
+            </div>
+
+            <!-- ШАГ 3: Количество пассажиров -->
+            <div class="section">
+                <div class="section-title"><i class="fas fa-users"></i> Пассажиры</div>
+                <label>Количество пассажиров</label>
+                <select id="passengerCount">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                </select>
+                <div id="passengersContainer" class="passengers-container"></div>
+            </div>
+
+            <!-- ШАГ 4: Карта мест -->
+            <div class="section">
+                <div class="section-title"><i class="fas fa-chair"></i> Выберите места для пассажиров</div>
+                <p>Нажмите на место, чтобы назначить его активному пассажиру (выделен жёлтым). Золотые места — бизнес-класс (доплата 5000₽).</p>
+                <div id="seatMap" class="seat-map"></div>
+                <input type="hidden" id="selectedSeat">
+            </div>
+
+            <!-- ШАГ 5: Багаж -->
+            <div class="section">
+                <div class="section-title"><i class="fas fa-suitcase"></i> Багаж</div>
+                <div class="baggage-option">
+                    <label><input type="radio" name="baggage" value="0" checked> Без багажа</label>
+                    <label><input type="radio" name="baggage" value="1"> 1 место (23 кг) +2000 ₽</label>
+                    <label><input type="radio" name="baggage" value="2"> 2 места (по 23 кг) +3500 ₽</label>
+                </div>
+            </div>
+
+            <!-- ШАГ 6: Отель и туроператор -->
+            <div class="section" id="hotelSection">
+                <div class="section-title"><i class="fas fa-hotel"></i> Забронировать отель (опционально)</div>
+                <div id="hotelList" class="grid-3"></div>
+                <div style="margin-top: 20px;">
+                    <label>Даты проживания</label>
+                    <div class="grid-2">
+                        <input type="date" id="checkin">
+                        <input type="date" id="checkout">
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <div class="section-title"><i class="fas fa-briefcase"></i> Туроператор</div>
+                    <div id="tourList" class="grid-3"></div>
+                </div>
+            </div>
+
+            <!-- Кнопка бронирования -->
+            <button class="btn-primary" id="bookBtn"><i class="fas fa-check-circle"></i> Забронировать и получить билет</button>
+
+            <!-- Место для вывода билета -->
+            <div id="ticketContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ---------- ДАННЫЕ (полностью сохранены из предыдущей версии) ----------
+            const cities = {
+                SVX: 'Екатеринбург', UFA: 'Уфа', CEK: 'Челябинск', SVO: 'Москва', LED: 'Санкт-Петербург', KZN: 'Казань', OVB: 'Новосибирск',
+                JFK: 'Нью-Йорк', LHR: 'Лондон', NRT: 'Токио', CDG: 'Париж', FCO: 'Рим', PEK: 'Пекин',
+                UTP: 'Паттайя (Утапао)', HKT: 'Пхукет', BKK: 'Бангкок', AYT: 'Анталья', DXB: 'Дубай', SSH: 'Шарм-эль-Шейх',
+                ZZZ: 'Зона 51', ATL: 'Атлантида', MOR: 'Средиземье', HOG: 'Хогвартс', PAN: 'Пандора', GOT: 'Готэм-Сити', EPI: 'Остров Эпштейна'
+            };
+
+            const flights = [
+                // Реальные
+                { id: 1, from: 'SVX', to: 'JFK', airline: 'Аэрофлот', flightNo: 'SU 100', aircraft: 'Boeing 777-300ER', departure: '10:30', arrival: '14:20', price: 65400 },
+                { id: 2, from: 'UFA', to: 'LHR', airline: 'British Airways', flightNo: 'BA 872', aircraft: 'Boeing 787-9', departure: '06:15', arrival: '09:30', price: 58700 },
+                { id: 3, from: 'SVO', to: 'NRT', airline: 'Japan Airlines', flightNo: 'JL 42', aircraft: 'Boeing 777-300ER', departure: '17:50', arrival: '09:30+1', price: 72300 },
+                { id: 4, from: 'LED', to: 'CDG', airline: 'Air France', flightNo: 'AF 1445', aircraft: 'Airbus A330-300', departure: '12:10', arrival: '15:25', price: 31200 },
+                { id: 5, from: 'KZN', to: 'FCO', airline: 'Alitalia', flightNo: 'AZ 719', aircraft: 'Airbus A320', departure: '08:40', arrival: '12:55', price: 28900 },
+                { id: 6, from: 'OVB', to: 'PEK', airline: 'Air China', flightNo: 'CA 904', aircraft: 'Airbus A330-200', departure: '23:55', arrival: '05:10+1', price: 35700 },
+                // Старые реальные (кратко)
+                { id: 7, from: 'SVX', to: 'UTP', airline: 'Аэрофлот', flightNo: 'SU 682', aircraft: 'Boeing 737-800', departure: '08:30', arrival: '16:45', price: 28500 },
+                { id: 8, from: 'SVX', to: 'UTP', airline: 'S7 Airlines', flightNo: 'S7 305', aircraft: 'Airbus A320neo', departure: '13:20', arrival: '21:35', price: 26400 },
+                { id: 9, from: 'UFA', to: 'UTP', airline: 'Thai Airways', flightNo: 'TG 971', aircraft: 'Boeing 777-300', departure: '10:05', arrival: '19:20', price: 31200 },
+                { id: 10, from: 'CEK', to: 'UTP', airline: 'Аэрофлот', flightNo: 'SU 684', aircraft: 'Airbus A320', departure: '05:45', arrival: '14:00', price: 27700 },
+                { id: 11, from: 'SVO', to: 'HKT', airline: 'Аэрофлот', flightNo: 'SU 270', aircraft: 'Boeing 777-300ER', departure: '09:25', arrival: '20:40', price: 35900 },
+                { id: 12, from: 'LED', to: 'HKT', airline: 'S7 Airlines', flightNo: 'S7 637', aircraft: 'Airbus A330', departure: '12:15', arrival: '23:30', price: 34100 },
+                { id: 13, from: 'SVX', to: 'BKK', airline: 'Thai Airways', flightNo: 'TG 415', aircraft: 'Boeing 787-9', departure: '20:10', arrival: '06:25+1', price: 40200 },
+                { id: 14, from: 'UFA', to: 'BKK', airline: 'S7 Airlines', flightNo: 'S7 899', aircraft: 'Airbus A321', departure: '16:30', arrival: '02:45+1', price: 38100 },
+                { id: 15, from: 'SVO', to: 'AYT', airline: 'Turkish Airlines', flightNo: 'TK 214', aircraft: 'Airbus A330-300', departure: '11:20', arrival: '15:45', price: 22400 },
+                { id: 16, from: 'LED', to: 'AYT', airline: 'Turkish Airlines', flightNo: 'TK 402', aircraft: 'Boeing 737 MAX 9', departure: '13:40', arrival: '18:05', price: 20800 },
+                { id: 17, from: 'KZN', to: 'AYT', airline: 'Red Wings', flightNo: 'WZ 305', aircraft: 'Airbus A321', departure: '06:15', arrival: '10:30', price: 18500 },
+                { id: 18, from: 'OVB', to: 'AYT', airline: 'Nordwind', flightNo: 'N4 112', aircraft: 'Boeing 777-200', departure: '04:00', arrival: '09:15', price: 26700 },
+                { id: 19, from: 'SVX', to: 'AYT', airline: 'Аэрофлот', flightNo: 'SU 856', aircraft: 'Airbus A320', departure: '08:50', arrival: '13:05', price: 21300 },
+                { id: 20, from: 'SVO', to: 'DXB', airline: 'Emirates', flightNo: 'EK 134', aircraft: 'Airbus A380-800', departure: '16:30', arrival: '22:55', price: 45700 },
+                { id: 21, from: 'LED', to: 'DXB', airline: 'Flydubai', flightNo: 'FZ 988', aircraft: 'Boeing 737 MAX 8', departure: '11:15', arrival: '17:40', price: 31200 },
+                { id: 22, from: 'KZN', to: 'DXB', airline: 'Emirates', flightNo: 'EK 176', aircraft: 'Boeing 777-300ER', departure: '09:30', arrival: '15:55', price: 38900 },
+                { id: 23, from: 'UFA', to: 'DXB', airline: 'Flydubai', flightNo: 'FZ 978', aircraft: 'Boeing 737 MAX 9', departure: '07:50', arrival: '14:15', price: 29800 },
+                { id: 24, from: 'CEK', to: 'DXB', airline: 'Аэрофлот', flightNo: 'SU 524', aircraft: 'Airbus A330-200', departure: '17:20', arrival: '23:45', price: 35100 },
+                { id: 25, from: 'SVO', to: 'SSH', airline: 'EgyptAir', flightNo: 'MS 731', aircraft: 'Boeing 787-9', departure: '10:10', arrival: '14:25', price: 21900 },
+                { id: 26, from: 'LED', to: 'SSH', airline: 'Red Wings', flightNo: 'WZ 451', aircraft: 'Airbus A321', departure: '07:25', arrival: '11:40', price: 18800 },
+                { id: 27, from: 'KZN', to: 'SSH', airline: 'Nordwind', flightNo: 'N4 215', aircraft: 'Boeing 777-200', departure: '05:30', arrival: '09:45', price: 24200 },
+                { id: 28, from: 'OVB', to: 'SSH', airline: 'EgyptAir', flightNo: 'MS 845', aircraft: 'Airbus A330-300', departure: '02:50', arrival: '08:10', price: 27500 },
+                { id: 29, from: 'SVX', to: 'SSH', airline: 'S7 Airlines', flightNo: 'S7 507', aircraft: 'Airbus A320neo', departure: '14:20', arrival: '18:35', price: 20700 },
+                // Выдуманные
+                { id: 100, from: 'CEK', to: 'ZZZ', airline: 'SpaceX Shuttle', flightNo: 'SX 001', aircraft: 'Starship', departure: '02:00', arrival: '02:15', price: 99999999 },
+                { id: 101, from: 'SVX', to: 'ZZZ', airline: 'Area 51 Airlines', flightNo: 'A51 13', aircraft: 'Boeing 737-200', departure: '23:30', arrival: '23:45', price: 500000 },
+                { id: 102, from: 'UFA', to: 'ATL', airline: 'Atlantis Air', flightNo: 'AA 777', aircraft: 'Airbus A380-800', departure: '08:00', arrival: '08:30', price: 100500 },
+                { id: 103, from: 'KZN', to: 'ATL', airline: 'Neptune Airways', flightNo: 'NP 001', aircraft: 'Boeing 747-400', departure: '14:20', arrival: '14:50', price: 88000 },
+                { id: 104, from: 'SVO', to: 'MOR', airline: 'Frodo Airlines', flightNo: 'FR 9', aircraft: 'Airbus A340-600', departure: '09:45', arrival: '10:15', price: 250 },
+                { id: 105, from: 'LED', to: 'MOR', airline: 'Gandalf Airways', flightNo: 'GW 001', aircraft: 'Boeing 787', departure: '18:30', arrival: '19:00', price: 123456 },
+                { id: 106, from: 'CEK', to: 'HOG', airline: 'Air Hogwarts', flightNo: 'HW 101', aircraft: 'Airbus A320', departure: '07:15', arrival: '07:45', price: 999 },
+                { id: 107, from: 'SVX', to: 'HOG', airline: 'Magic Air', flightNo: 'MA 42', aircraft: 'Boeing 737 MAX', departure: '21:50', arrival: '22:20', price: 1500 },
+                { id: 108, from: 'UFA', to: 'PAN', airline: 'Pandora Express', flightNo: 'PX 007', aircraft: 'Airbus A350-1000', departure: '12:00', arrival: '12:30', price: 42000 },
+                { id: 109, from: 'KZN', to: 'PAN', airline: 'Avatar Airlines', flightNo: 'AV 22', aircraft: 'Boeing 777X', departure: '04:35', arrival: '05:05', price: 999999 },
+                { id: 110, from: 'SVO', to: 'GOT', airline: 'Gotham Jet', flightNo: 'GJ 13', aircraft: 'Airbus A330', departure: '19:20', arrival: '19:50', price: 1000000 },
+                { id: 111, from: 'LED', to: 'GOT', airline: 'Batman Air', flightNo: 'BM 66', aircraft: 'Boeing 737', departure: '11:10', arrival: '11:40', price: 850000 },
+                { id: 112, from: 'CEK', to: 'EPI', airline: 'Epstein Air', flightNo: 'EA 001', aircraft: 'Boeing 777-200LR', departure: '23:30', arrival: '06:30+1', price: 999999 },
+                { id: 113, from: 'SVX', to: 'EPI', airline: 'Mystery Flights', flightNo: 'MY 007', aircraft: 'Airbus A340-600', departure: '04:45', arrival: '12:00', price: 888888 }
+            ];
+
+            const hotels = {
+                JFK: [{ name: 'The Plaza', stars: 5, price: 45000 }, { name: 'Marriott Marquis', stars: 4, price: 25000 }],
+                LHR: [{ name: 'The Ritz London', stars: 5, price: 60000 }, { name: 'Hilton London Heathrow', stars: 4, price: 18000 }],
+                NRT: [{ name: 'Narita Excel Hotel', stars: 4, price: 15000 }, { name: 'Nikko Narita', stars: 5, price: 27000 }],
+                CDG: [{ name: 'Hyatt Paris CDG', stars: 4, price: 22000 }, { name: 'Sheraton Paris Airport', stars: 4, price: 19000 }],
+                FCO: [{ name: 'Rome Cavalieri', stars: 5, price: 38000 }, { name: 'Hilton Rome Airport', stars: 4, price: 21000 }],
+                PEK: [{ name: 'Beijing Capital Airport Hotel', stars: 4, price: 12000 }, { name: 'Hilton Beijing Capital', stars: 5, price: 26000 }],
+                UTP: [{ name: 'Pattaya Park Beach Resort', stars: 4, price: 3500 }, { name: 'Amari Nova Suites Pattaya', stars: 5, price: 5200 }, { name: 'Hard Rock Hotel Pattaya', stars: 5, price: 6100 }],
+                HKT: [{ name: 'The Shore at Katathani', stars: 5, price: 8900 }, { name: 'Novotel Phuket Resort', stars: 4, price: 4700 }, { name: 'Keemala Phuket', stars: 5, price: 14500 }],
+                BKK: [{ name: 'Mandarin Oriental', stars: 5, price: 12500 }, { name: 'Siam Kempinski', stars: 5, price: 11200 }, { name: 'Waldorf Astoria', stars: 5, price: 13500 }],
+                AYT: [{ name: 'Rixos Premium Belek', stars: 5, price: 8500 }, { name: 'Maxx Royal Belek', stars: 5, price: 11200 }, { name: 'Delphin Be Grand', stars: 5, price: 6700 }, { name: 'Barut Lara', stars: 5, price: 7200 }],
+                DXB: [{ name: 'Burj Al Arab Jumeirah', stars: 7, price: 35000 }, { name: 'Atlantis The Palm', stars: 5, price: 18900 }, { name: 'Armani Hotel Dubai', stars: 5, price: 16400 }, { name: 'Jumeirah Beach Hotel', stars: 5, price: 12500 }],
+                SSH: [{ name: 'Four Seasons Sharm', stars: 5, price: 9200 }, { name: 'Rixos Sharm El Sheikh', stars: 5, price: 7800 }, { name: 'Stella Di Mare', stars: 5, price: 6400 }],
+                ZZZ: [{ name: 'Area 51 Base', stars: 3, price: 500000 }, { name: 'Alien Inn', stars: 2, price: 10000 }],
+                ATL: [{ name: 'Poseidon Palace', stars: 7, price: 999999 }, { name: 'Neptune Resort', stars: 6, price: 750000 }],
+                MOR: [{ name: 'Rivendell Spa', stars: 5, price: 25000 }, { name: 'Shire Inn', stars: 4, price: 5000 }],
+                HOG: [{ name: 'Hogwarts Castle', stars: 5, price: 15000 }, { name: 'Three Broomsticks Inn', stars: 3, price: 3000 }],
+                PAN: [{ name: 'Tree of Souls Resort', stars: 6, price: 450000 }, { name: 'Floating Mountains Hotel', stars: 7, price: 999999 }],
+                GOT: [{ name: 'Wayne Manor', stars: 5, price: 1000000 }, { name: 'Iceberg Lounge', stars: 4, price: 50000 }],
+                EPI: [{ name: 'Epstein Island Resort', stars: 7, price: 500000 }, { name: 'The Hideaway', stars: 6, price: 350000 }, { name: 'Pedophile Inn', stars: 3, price: 100 }]
+            };
+
+            const tourOperatorsByDest = {
+                JFK: ['Библио Глобус', 'Coral Travel', 'Pegas Touristik'],
+                LHR: ['Библио Глобус', 'TEZ Tour', 'Anex Tour'],
+                NRT: ['Pegas Touristik', 'Anex Tour', 'TUI'],
+                CDG: ['Coral Travel', 'TEZ Tour', 'Sunmar'],
+                FCO: ['Библио Глобус', 'Anex Tour', 'TUI'],
+                PEK: ['Coral Travel', 'Pegas Touristik', 'TEZ Tour'],
+                UTP: ['Библио Глобус', 'Coral Travel', 'Pegas Touristik', 'Anex Tour'],
+                HKT: ['TEZ Tour', 'Sunmar', 'TUI'],
+                BKK: ['Библио Глобус', 'Anex Tour', 'Pegas Touristik'],
+                AYT: ['Coral Travel', 'TEZ Tour', 'Sunmar', 'TUI'],
+                DXB: ['Библио Глобус', 'Coral Travel', 'Anex Tour'],
+                SSH: ['Pegas Touristik', 'Sunmar', 'TUI'],
+                ZZZ: ['Area 51 Travel', 'Alien Tours', 'Galactic Expeditions'],
+                ATL: ['Atlantis Adventures', 'Neptune Travel', 'Poseidon Tours'],
+                MOR: ['Middle-earth Expeditions', 'Hobbit Travel', 'Gandalf Tours'],
+                HOG: ['Magic Travel', 'Wizard Tours', 'Hogwarts Express'],
+                PAN: ['Avatar Expeditions', 'Pandora Travel', 'Na\'vi Tours'],
+                GOT: ['Gotham Travel', 'Batman Tours', 'Arkham Excursions'],
+                EPI: ['Epstein Travel', 'Island Getaways', 'Mystery Tours']
+            };
+
+            const aircraftTypes = {
+                'Boeing 737-800': { rows: 30, letters: ['A','B','C','D','E','F'], businessRows: [1,2,3] },
+                'Airbus A320neo': { rows: 28, letters: ['A','B','C','D','E','F'], businessRows: [1,2] },
+                'Boeing 777-300': { rows: 40, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4] },
+                'Boeing 777-300ER': { rows: 42, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4,5] },
+                'Airbus A330': { rows: 34, letters: ['A','B','C','D','E','F','G','H'], businessRows: [1,2,3] },
+                'Boeing 787-9': { rows: 38, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4] },
+                'Airbus A321': { rows: 32, letters: ['A','B','C','D','E','F'], businessRows: [1,2] },
+                'Airbus A320': { rows: 30, letters: ['A','B','C','D','E','F'], businessRows: [1,2] },
+                'Airbus A330-300': { rows: 34, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4] },
+                'Boeing 737 MAX 9': { rows: 30, letters: ['A','B','C','D','E','F'], businessRows: [1,2] },
+                'Boeing 737 MAX 8': { rows: 30, letters: ['A','B','C','D','E','F'], businessRows: [1,2] },
+                'Airbus A350-900': { rows: 40, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4,5] },
+                'Airbus A380-800': { rows: 50, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4,5,6,7] },
+                'Boeing 777-200': { rows: 40, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4] },
+                'Boeing 777-200LR': { rows: 40, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4,5] },
+                'Airbus A340-600': { rows: 42, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4] },
+                'Starship': { rows: 10, letters: ['A','B','C'], businessRows: [1] },
+                'Boeing 747-400': { rows: 45, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3] },
+                'Airbus A350-1000': { rows: 42, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4] },
+                'Boeing 777X': { rows: 44, letters: ['A','B','C','D','E','F','G','H','J','K'], businessRows: [1,2,3,4,5] }
+            };
+
+            let selectedFlight = null;
+            let selectedHotel = null;
+            let selectedTour = null;
+            let passengers = [];
+            let activePassengerIndex = 0;
+
+            const fromSelect = document.getElementById('fromCity');
+            const toSelect = document.getElementById('toCity');
+            const flightDate = document.getElementById('flightDate');
+            const flightListDiv = document.getElementById('flightList');
+            const seatMapDiv = document.getElementById('seatMap');
+            const passengersContainer = document.getElementById('passengersContainer');
+            const passengerCountSelect = document.getElementById('passengerCount');
+            const hotelListDiv = document.getElementById('hotelList');
+            const checkinInput = document.getElementById('checkin');
+            const checkoutInput = document.getElementById('checkout');
+            const tourListDiv = document.getElementById('tourList');
+            const bookBtn = document.getElementById('bookBtn');
+            const ticketContainer = document.getElementById('ticketContainer');
+
+            // Установка текущей даты
+            const today = new Date().toISOString().slice(0, 10);
+            flightDate.value = today;
+            checkinInput.value = today;
+            const nextWeek = new Date(Date.now() + 7*24*60*60*1000).toISOString().slice(0, 10);
+            checkoutInput.value = nextWeek;
+
+            function updateFlights() {
+                const from = fromSelect.value;
+                const to = toSelect.value;
+                const filtered = flights.filter(f => f.from === from && f.to === to);
+                let html = '';
+                if (filtered.length === 0) {
+                    html = '<p>Нет прямых рейсов на выбранную дату.</p>';
+                } else {
+                    filtered.forEach(f => {
+                        html += `
+                            <div class="flight-option ${selectedFlight && selectedFlight.id === f.id ? 'selected' : ''}" data-flight-id="${f.id}">
+                                <h4>${f.airline} · ${f.flightNo}</h4>
+                                <div class="company">${f.aircraft}</div>
+                                <div class="time"><span>🛫 ${f.departure}</span> <span>🛬 ${f.arrival}</span></div>
+                                <div class="price">${f.price.toLocaleString()} ₽</div>
+                            </div>
+                        `;
+                    });
+                }
+                flightListDiv.innerHTML = html;
+                document.querySelectorAll('.flight-option').forEach(el => {
+                    el.addEventListener('click', (e) => {
+                        const id = parseInt(el.dataset.flightId);
+                        selectedFlight = flights.find(f => f.id === id);
+                        updateFlights();
+                        updateSeatMap();
+                    });
+                });
+            }
+
+            function updatePassengers() {
+                const count = parseInt(passengerCountSelect.value);
+                while (passengers.length < count) {
+                    passengers.push({ name: '', age: 30, seat: '' });
+                }
+                while (passengers.length > count) {
+                    passengers.pop();
+                }
+                renderPassengers();
+                updateSeatMap();
+            }
+
+            function renderPassengers() {
+                let html = '';
+                passengers.forEach((p, index) => {
+                    html += `
+                        <div class="passenger-card ${activePassengerIndex === index ? 'active' : ''}">
+                            <div class="passenger-header">
+                                <input type="radio" name="activePassenger" value="${index}" ${activePassengerIndex === index ? 'checked' : ''} onchange="setActivePassenger(${index})">
+                                <h4>Пассажир ${index+1}</h4>
+                            </div>
+                            <label>ФИО</label>
+                            <input type="text" class="passenger-name" data-index="${index}" value="${p.name}" placeholder="Иванов Иван">
+                            <label>Возраст</label>
+                            <input type="number" class="passenger-age" data-index="${index}" value="${p.age}" min="0" max="120">
+                            <p>Место: ${p.seat || 'не выбрано'}</p>
+                        </div>
+                    `;
+                });
+                passengersContainer.innerHTML = html;
+
+                document.querySelectorAll('.passenger-name').forEach(inp => {
+                    inp.addEventListener('input', e => {
+                        const idx = e.target.dataset.index;
+                        passengers[idx].name = e.target.value;
+                    });
+                });
+                document.querySelectorAll('.passenger-age').forEach(inp => {
+                    inp.addEventListener('input', e => {
+                        const idx = e.target.dataset.index;
+                        passengers[idx].age = parseInt(e.target.value) || 0;
+                    });
+                });
+                document.querySelectorAll('input[name="activePassenger"]').forEach(radio => {
+                    radio.addEventListener('change', e => {
+                        activePassengerIndex = parseInt(e.target.value);
+                        renderPassengers();
+                        updateSeatMap();
+                    });
+                });
+            }
+
+            window.setActivePassenger = function(index) {
+                activePassengerIndex = index;
+                renderPassengers();
+                updateSeatMap();
+            };
+
+            function updateSeatMap() {
+                if (!selectedFlight) {
+                    seatMapDiv.innerHTML = '<p>Сначала выберите рейс</p>';
+                    return;
+                }
+                const aircraft = selectedFlight.aircraft;
+                const type = aircraftTypes[aircraft] || { rows: 30, letters: ['A','B','C','D','E','F'], businessRows: [] };
+                const rows = type.rows;
+                const letters = type.letters;
+                const businessRows = type.businessRows || [];
+
+                const occupiedSeats = passengers.map((p, idx) => p.seat).filter(s => s && s.length > 0);
+
+                let html = '';
+                for (let r = 1; r <= Math.min(rows, 20); r++) {
+                    let rowHtml = `<div class="seat-row"><span class="seat-row-label">${r}</span>`;
+                    for (let l of letters) {
+                        const seatId = r + l;
+                        const isOccupied = occupiedSeats.includes(seatId) && !(activePassengerIndex !== null && passengers[activePassengerIndex]?.seat === seatId);
+                        const isSelected = (activePassengerIndex !== null && passengers[activePassengerIndex]?.seat === seatId);
+                        const isBusiness = businessRows.includes(r);
+                        let seatClass = 'seat';
+                        if (isOccupied) seatClass += ' occupied';
+                        else if (isSelected) seatClass += ' selected';
+                        else seatClass += ' available';
+                        if (isBusiness) seatClass += ' business';
+
+                        rowHtml += `<div class="${seatClass}" data-seat="${seatId}" data-occupied="${isOccupied}" data-business="${isBusiness}">${seatId}</div>`;
+                    }
+                    rowHtml += '</div>';
+                    html += rowHtml;
+                }
+                seatMapDiv.innerHTML = html;
+
+                document.querySelectorAll('.seat.available').forEach(el => {
+                    el.addEventListener('click', (e) => {
+                        if (activePassengerIndex === null) {
+                            alert('Выберите пассажира, для которого хотите назначить место');
+                            return;
+                        }
+                        const seat = el.dataset.seat;
+                        const isOccupiedByOther = passengers.some((p, idx) => idx !== activePassengerIndex && p.seat === seat);
+                        if (isOccupiedByOther) {
+                            alert('Это место уже занято другим пассажиром');
+                            return;
+                        }
+                        passengers[activePassengerIndex].seat = seat;
+                        renderPassengers();
+                        updateSeatMap();
+                    });
+                });
+            }
+
+            function updateHotelsAndTours() {
+                const to = toSelect.value;
+                const hotelOptions = hotels[to] || hotels['UTP'];
+                let hotelHtml = '';
+                hotelOptions.forEach((h, idx) => {
+                    hotelHtml += `
+                        <div class="hotel-item ${selectedHotel && selectedHotel.name === h.name ? 'selected' : ''}" data-hotel-idx="${idx}">
+                            <h4>${h.name}</h4>
+                            <div>⭐ ${h.stars}</div>
+                            <div>${h.price} ₽ / ночь</div>
+                        </div>
+                    `;
+                });
+                hotelListDiv.innerHTML = hotelHtml;
+                document.querySelectorAll('.hotel-item').forEach(el => {
+                    el.addEventListener('click', (e) => {
+                        document.querySelectorAll('.hotel-item').forEach(h => h.classList.remove('selected'));
+                        el.classList.add('selected');
+                        const idx = el.dataset.hotelIdx;
+                        selectedHotel = hotelOptions[idx];
+                    });
+                });
+
+                const tourOptions = tourOperatorsByDest[to] || tourOperatorsByDest['UTP'];
+                let tourHtml = '';
+                tourOptions.forEach((t, idx) => {
+                    tourHtml += `
+                        <div class="tour-item ${selectedTour === t ? 'selected' : ''}" data-tour-idx="${idx}">
+                            <h4>${t}</h4>
+                        </div>
+                    `;
+                });
+                tourListDiv.innerHTML = tourHtml;
+                document.querySelectorAll('.tour-item').forEach(el => {
+                    el.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tour-item').forEach(t => t.classList.remove('selected'));
+                        el.classList.add('selected');
+                        const idx = el.dataset.tourIdx;
+                        selectedTour = tourOptions[idx];
+                    });
+                });
+            }
+
+            function calculateTotal() {
+                if (!selectedFlight) return 0;
+                let total = 0;
+                const basePrice = selectedFlight.price;
+                const baggageOption = parseInt(document.querySelector('input[name="baggage"]:checked').value);
+                let baggagePrice = 0;
+                if (baggageOption === 1) baggagePrice = 2000;
+                if (baggageOption === 2) baggagePrice = 3500;
+
+                const aircraft = selectedFlight.aircraft;
+                const type = aircraftTypes[aircraft] || { businessRows: [] };
+                const businessRows = type.businessRows || [];
+
+                passengers.forEach(p => {
+                    let passengerPrice = basePrice;
+                    if (p.seat) {
+                        const row = parseInt(p.seat.match(/\d+/)[0]);
+                        if (businessRows.includes(row)) {
+                            passengerPrice += 5000;
+                        }
+                    }
+                    total += passengerPrice;
+                });
+                total += baggagePrice;
+                return total;
+            }
+
+            // Генерация случайного PNR (6 символов)
+            function generatePNR() {
+                const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+                let pnr = '';
+                for (let i = 0; i < 6; i++) {
+                    pnr += chars[Math.floor(Math.random() * chars.length)];
+                }
+                return pnr;
+            }
+
+            // Генерация случайного номера выхода (gate)
+            function generateGate() {
+                const letters = ['A','B','C','D','E','F','G'];
+                const letter = letters[Math.floor(Math.random() * letters.length)];
+                const number = Math.floor(Math.random() * 30) + 1;
+                return letter + number;
+            }
+
+            function init() {
+                updateFlights();
+                updateHotelsAndTours();
+                updatePassengers();
+
+                fromSelect.addEventListener('change', updateFlights);
+                toSelect.addEventListener('change', () => {
+                    updateFlights();
+                    updateHotelsAndTours();
+                    selectedHotel = null;
+                    selectedTour = null;
+                });
+                flightDate.addEventListener('change', updateFlights);
+                passengerCountSelect.addEventListener('change', updatePassengers);
+            }
+
+            init();
+
+            // Бронирование и создание билета
+            bookBtn.addEventListener('click', () => {
+                if (!selectedFlight) { alert('Выберите рейс!'); return; }
+                for (let i = 0; i < passengers.length; i++) {
+                    if (!passengers[i].name.trim()) { alert(`Введите ФИО пассажира ${i+1}`); return; }
+                    if (!passengers[i].seat) { alert(`Выберите место для пассажира ${i+1}`); return; }
+                }
+
+                const baggageOption = document.querySelector('input[name="baggage"]:checked').value;
+                let baggageText = '0';
+                if (baggageOption === '1') baggageText = '1x23kg';
+                if (baggageOption === '2') baggageText = '2x23kg';
+
+                const fromCityName = cities[fromSelect.value];
+                const toCityName = cities[toSelect.value];
+                const date = flightDate.value;
+                const hotelName = selectedHotel ? selectedHotel.name : 'не выбран';
+                const tourName = selectedTour || 'не выбран';
+                const checkIn = checkinInput.value;
+                const checkOut = checkoutInput.value;
+
+                // Генерация случайных данных для билета
+                const pnr = generatePNR();
+                const gate = generateGate();
+                const seq = Math.floor(Math.random() * 100) + 1;
+                const boardingTime = selectedFlight.departure.split(':').map((v, i) => i === 0 ? (parseInt(v) - 1).toString().padStart(2,'0') : v).join(':'); // примерно за час
+
+                // Определяем класс для каждого пассажира (по месту)
+                const aircraft = selectedFlight.aircraft;
+                const type = aircraftTypes[aircraft] || { businessRows: [] };
+                const businessRows = type.businessRows || [];
+
+                let passengersListHtml = '';
+                passengers.forEach((p, idx) => {
+                    const row = parseInt(p.seat.match(/\d+/)[0]);
+                    const cabinClass = businessRows.includes(row) ? 'BUS' : 'ECO';
+                    passengersListHtml += `
+                        <div class="row" style="border-bottom: 1px solid #eee; padding: 5px 0;">
+                            <div class="col"><span class="label">Пассажир ${idx+1}</span><div class="value-sm">${p.name}</div></div>
+                            <div class="col"><span class="label">Место</span><div class="value-sm">${p.seat} (${cabinClass})</div></div>
+                            <div class="col"><span class="label">Возраст</span><div class="value-sm">${p.age}</div></div>
+                        </div>
+                    `;
+                });
+
+                const totalPrice = calculateTotal();
+
+                const ticketHtml = `
+                    <div class="ticket">
+                        <div class="ticket-header">
+                            <h2><i class="fas fa-plane"></i> SkyBooking</h2>
+                            <div class="airline-logo">
+                                <i class="fas fa-ticket-alt"></i> ${selectedFlight.airline}
+                            </div>
+                        </div>
+                        <div class="ticket-body">
+                            <div class="receipt-section">
+                                <div style="text-align: center; margin-bottom: 15px; font-weight: 600;">PASSENGER RECEIPT</div>
+                                <div class="row">
+                                    <div class="col"><span class="label">PNR</span><div class="value">${pnr}</div></div>
+                                    <div class="col"><span class="label">FLIGHT</span><div class="value">${selectedFlight.flightNo}</div></div>
+                                    <div class="col"><span class="label">DATE</span><div class="value">${date}</div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col"><span class="label">FROM</span><div class="value">${fromCityName} (${fromSelect.value})</div></div>
+                                    <div class="col"><span class="label">TO</span><div class="value">${toCityName} (${toSelect.value})</div></div>
+                                    <div class="col"><span class="label">GATE</span><div class="value">${gate}</div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col"><span class="label">DEPART</span><div class="value">${selectedFlight.departure}</div></div>
+                                    <div class="col"><span class="label">ARRIVE</span><div class="value">${selectedFlight.arrival}</div></div>
+                                    <div class="col"><span class="label">BOARDING</span><div class="value">${boardingTime}</div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col"><span class="label">AIRCRAFT</span><div class="value">${selectedFlight.aircraft}</div></div>
+                                    <div class="col"><span class="label">BAGGAGE</span><div class="value">${baggageText}</div></div>
+                                    <div class="col"><span class="label">SEQ</span><div class="value">${seq}</div></div>
+                                </div>
+                                ${passengersListHtml}
+                            </div>
+
+                            <div class="boarding-section">
+                                <div style="text-align: center; margin: 15px 0; font-weight: 600;">BOARDING PASS</div>
+                                <div class="row">
+                                    <div class="col"><span class="label">PASSENGER</span><div class="value-sm">${passengers[0].name} ${passengers.length > 1 ? ` et al.` : ''}</div></div>
+                                    <div class="col"><span class="label">FLIGHT</span><div class="value-sm">${selectedFlight.flightNo}</div></div>
+                                    <div class="col"><span class="label">DATE</span><div class="value-sm">${date}</div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col"><span class="label">FROM</span><div class="value-sm">${fromSelect.value}</div></div>
+                                    <div class="col"><span class="label">TO</span><div class="value-sm">${toSelect.value}</div></div>
+                                    <div class="col"><span class="label">GATE</span><div class="value-sm">${gate}</div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col"><span class="label">BOARDING</span><div class="value-sm">${boardingTime}</div></div>
+                                    <div class="col"><span class="label">SEAT</span><div class="value-sm">${passengers[0].seat} ${passengers.length > 1 ? `+${passengers.length-1}` : ''}</div></div>
+                                    <div class="col"><span class="label">SEQ</span><div class="value-sm">${seq}</div></div>
+                                </div>
+                                <div class="barcode">
+                                    <div class="barcode-svg"></div>
+                                    <div class="barcode-number">${pnr} • ${selectedFlight.flightNo} • ${passengers[0].seat}</div>
+                                </div>
+                            </div>
+
+                            <div class="hotel-tour-block">
+                                <div class="row">
+                                    <div class="col"><span class="label">ОТЕЛЬ</span><div class="value-sm">${hotelName}</div></div>
+                                    <div class="col"><span class="label">ДАТЫ</span><div class="value-sm">${checkIn} — ${checkOut}</div></div>
+                                    <div class="col"><span class="label">ТУРОПЕРАТОР</span><div class="value-sm">${tourName}</div></div>
+                                </div>
+                            </div>
+
+                            <div class="total-price">ИТОГО: ${totalPrice.toLocaleString()} ₽</div>
+
+                            <div class="footer-note">
+                                <span>Посадочный талон действителен при предъявлении паспорта</span>
+                                <span>✈️ SkyBooking</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                ticketContainer.innerHTML = ticketHtml;
+                ticketContainer.scrollIntoView({ behavior: 'smooth' });
+            });
+        })();
+    </script>
+</body>
+</html>
